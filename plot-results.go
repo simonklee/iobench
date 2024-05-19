@@ -53,11 +53,12 @@ func main() {
 	outputFile := flag.String("output", "", "Output PNG file for the plot")
 	title := flag.String("title", "SSD Benchmark Results", "Title of the plot")
 	xLabel := flag.String("xlabel", "Test Type", "Label for the x-axis")
-	yLabel := flag.String("ylabel", "Bandwidth (KB/s)", "Label for the y-axis")
+	yLabel := flag.String("ylabel", "", "Label for the y-axis")
+	valueType := flag.String("value-type", "bw", "Type of value to plot: 'bw' for bandwidth, 'iops' for IOPS")
 	flag.Parse()
 
-	if *inputDir == "" || *outputFile == "" {
-		log.Fatal("input and output files must be specified")
+	if *inputDir == "" || *outputFile == "" || *yLabel == "" {
+		log.Fatal("input, output, and ylabel must be specified")
 	}
 
 	var readValues, writeValues plotter.Values
@@ -75,8 +76,13 @@ func main() {
 
 			testName := filepath.Base(path[:len(path)-len(filepath.Ext(path))])
 			testTypes = append(testTypes, testName)
-			readValues = append(readValues, result.Jobs[0].Read.Bw)
-			writeValues = append(writeValues, result.Jobs[0].Write.Bw)
+			if *valueType == "iops" {
+				readValues = append(readValues, result.Jobs[0].Read.Iops)
+				writeValues = append(writeValues, result.Jobs[0].Write.Iops)
+			} else {
+				readValues = append(readValues, result.Jobs[0].Read.Bw/1024)    // Convert KB/s to MB/s
+				writeValues = append(writeValues, result.Jobs[0].Write.Bw/1024) // Convert KB/s to MB/s
+			}
 		}
 		return nil
 	})
@@ -93,29 +99,27 @@ func main() {
 	p.X.Label.Text = *xLabel
 	p.Y.Label.Text = *yLabel
 
-	// Rotate x-axis labels for better readability
 	p.X.Tick.Label.Rotation = 1.0
 	p.X.Tick.Label.Font.Size = vg.Points(10)
 	p.Y.Tick.Label.Font.Size = vg.Points(10)
 
-	// Add grid lines
 	p.Add(plotter.NewGrid())
 
-	readBars, err := plotter.NewBarChart(readValues, vg.Points(20))
+	readBars, err := plotter.NewBarChart(readValues, vg.Points(15))
 	if err != nil {
 		log.Fatal(err)
 	}
 	readBars.LineStyle.Width = vg.Length(0)
 	readBars.Color = plotutil.Color(0)
-	readBars.Offset = -vg.Points(10)
+	readBars.Offset = -vg.Points(7.5)
 
-	writeBars, err := plotter.NewBarChart(writeValues, vg.Points(20))
+	writeBars, err := plotter.NewBarChart(writeValues, vg.Points(15))
 	if err != nil {
 		log.Fatal(err)
 	}
 	writeBars.LineStyle.Width = vg.Length(0)
 	writeBars.Color = plotutil.Color(1)
-	writeBars.Offset = vg.Points(10)
+	writeBars.Offset = vg.Points(7.5)
 
 	p.Add(readBars, writeBars)
 	p.Legend.Add("Read", readBars)

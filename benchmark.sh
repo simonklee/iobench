@@ -5,6 +5,8 @@ set -o pipefail
 set -o nounset
 #set -x
 
+SCRIPT_DIR=$(dirname "$0")
+
 run_fio() {
 	local root_path="$1"
 	local name="$2"
@@ -59,8 +61,11 @@ run_benchmarks() {
 	run_fio "$root_path" "seq_read" "read" "128k" "1G" "4" "60"
 	run_fio "$root_path" "seq_write" "write" "128k" "1G" "4" "60"
 
-	# Combine results into one graph.
-	go run plot-results.go -input="$root_path/output" -output="output/combined.png" -title="SSD Benchmark Results" -xlabel="Test Type" -ylabel="Bandwidth (KB/s)"
+	# Generate bandwidth plot
+	go run "$SCRIPT_DIR/plot-results.go" -input="$root_path/output" -output="$root_path/output/bandwidth.png" -title="SSD Benchmark Bandwidth" -xlabel="Test Type" -ylabel="Bandwidth (MB/s)" -value-type="bw"
+
+	# Generate IOPS plot
+	go run "$SCRIPT_DIR/plot-results.go" -input="$root_path/output" -output="$root_path/output/iops.png" -title="SSD Benchmark IOPS" -xlabel="Test Type" -ylabel="IOPS" -value-type="iops"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
